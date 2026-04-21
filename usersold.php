@@ -15,7 +15,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $name=$_POST['full_name']??''; $email=trim($_POST['email']??''); $pass=$_POST['password']??'';
             $role=$_POST['role']??'Member'; $dept=sanitize($_POST['department']??''); $title=sanitize($_POST['job_title']??''); $phone=sanitize($_POST['phone']??'');
             if (!$name||!$email||!$pass) { $message='Name, email and password required.'; $msgType='danger'; }
-            elseif (!filter_var($email,FILTER_VALIDATE_EMAIL)) { $message='Please enter a valid email address.'; $msgType='danger'; }
             elseif (strlen($pass)<8) { $message='Password must be at least 8 characters.'; $msgType='danger'; }
             else {
                 try {
@@ -28,16 +27,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         if ($action === 'update_user') {
             $uid=(int)$_POST['user_id'];
-            $uName=trim($_POST['full_name']??''); $uEmail=trim($_POST['email']??'');
-            if (!$uName||!$uEmail) { $message='Name and email are required.'; $msgType='danger'; }
-            elseif (!filter_var($uEmail,FILTER_VALIDATE_EMAIL)) { $message='Please enter a valid email address.'; $msgType='danger'; }
-            else {
-                try {
-                    $db->prepare("UPDATE users SET full_name=?,email=?,role=?,department=?,job_title=?,phone=?,updated_at=NOW() WHERE id=?")->execute([sanitize($uName),$uEmail,$_POST['role']??'Member',sanitize($_POST['department']??''),sanitize($_POST['job_title']??''),sanitize($_POST['phone']??''),$uid]);
-                    logActivity($user['id'],'UPDATE_USER','user',$uid,"Updated user #$uid");
-                    $message='User updated.';
-                } catch(PDOException $e){ $message='Update failed. Email may be taken.'; $msgType='danger'; }
-            }
+            try {
+                $db->prepare("UPDATE users SET full_name=?,email=?,role=?,department=?,job_title=?,phone=?,updated_at=NOW() WHERE id=?")->execute([sanitize($_POST['full_name']??''),trim($_POST['email']??''),$_POST['role']??'Member',sanitize($_POST['department']??''),sanitize($_POST['job_title']??''),sanitize($_POST['phone']??''),$uid]);
+                logActivity($user['id'],'UPDATE_USER','user',$uid,"Updated user #$uid");
+                $message='User updated.';
+            } catch(PDOException $e){ $message='Update failed. Email may be taken.'; $msgType='danger'; }
         }
         if ($action === 'reset_password') {
             $uid=(int)$_POST['user_id']; $pass=$_POST['new_password']??'';
@@ -147,48 +141,17 @@ $csrf = getCsrfToken();
     <div class="modal-header"><h5 class="modal-title"><i class="bi bi-person-plus me-2"></i>Create New User</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
     <form method="POST"><input type="hidden" name="csrf_token" value="<?= $csrf ?>"><input type="hidden" name="action" value="create_user">
     <div class="modal-body"><div class="row g-3">
-      <div class="col-12">
-        <div class="d-flex justify-content-between align-items-center mb-1">
-          <label class="form-label mb-0">Full Name <span class="text-danger">*</span></label>
-          <small class="text-muted" id="cNameCount">0 / 100</small>
-        </div>
-        <input type="text" name="full_name" id="cName" class="form-control" required maxlength="100" placeholder="e.g. Jane Smith" oninput="userCharCount('cName','cNameCount',100)">
-      </div>
-      <div class="col-12">
-        <div class="d-flex justify-content-between align-items-center mb-1">
-          <label class="form-label mb-0">Email <span class="text-danger">*</span></label>
-          <small class="text-muted" id="cEmailCount">0 / 150</small>
-        </div>
-        <input type="email" name="email" id="cEmail" class="form-control" required maxlength="150" placeholder="e.g. jane@example.com" oninput="userCharCount('cEmail','cEmailCount',150)">
-      </div>
+      <div class="col-12"><label class="form-label">Full Name <span class="text-danger">*</span></label><input type="text" name="full_name" class="form-control" required></div>
+      <div class="col-12"><label class="form-label">Email <span class="text-danger">*</span></label><input type="email" name="email" class="form-control" required></div>
       <div class="col-md-6"><label class="form-label">Role</label><select name="role" class="form-select"><option value="Member">Member</option><option value="Manager">Manager</option><option value="Admin">Admin</option></select></div>
-      <div class="col-md-6">
-        <div class="d-flex justify-content-between align-items-center mb-1">
-          <label class="form-label mb-0">Department</label>
-          <small class="text-muted" id="cDeptCount">0 / 100</small>
-        </div>
-        <input type="text" name="department" id="cDept" class="form-control" maxlength="100" oninput="userCharCount('cDept','cDeptCount',100)">
-      </div>
-      <div class="col-md-6">
-        <div class="d-flex justify-content-between align-items-center mb-1">
-          <label class="form-label mb-0">Job Title</label>
-          <small class="text-muted" id="cTitleCount">0 / 100</small>
-        </div>
-        <input type="text" name="job_title" id="cTitle" class="form-control" maxlength="100" oninput="userCharCount('cTitle','cTitleCount',100)">
-      </div>
-      <div class="col-md-6">
-        <div class="d-flex justify-content-between align-items-center mb-1">
-          <label class="form-label mb-0">Phone</label>
-          <small class="text-muted" id="cPhoneCount">0 / 30</small>
-        </div>
-        <input type="text" name="phone" id="cPhone" class="form-control" maxlength="30" oninput="userCharCount('cPhone','cPhoneCount',30)">
-      </div>
+      <div class="col-md-6"><label class="form-label">Department</label><input type="text" name="department" class="form-control"></div>
+      <div class="col-md-6"><label class="form-label">Job Title</label><input type="text" name="job_title" class="form-control"></div>
+      <div class="col-md-6"><label class="form-label">Phone</label><input type="text" name="phone" class="form-control"></div>
       <div class="col-12"><label class="form-label">Password <span class="text-danger">*</span></label>
         <div class="input-group"><input type="password" name="password" id="createPwd" class="form-control" minlength="8" required placeholder="Min 8 characters"><button type="button" class="btn btn-outline-secondary" onclick="togglePwd('createPwd','cpEye')"><i class="bi bi-eye" id="cpEye"></i></button></div>
-        <div class="form-text"><i class="bi bi-info-circle me-1"></i>Minimum 8 characters.</div>
       </div>
     </div></div>
-    <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-primary" onclick="return validateCreateUser()"><i class="bi bi-person-plus me-1"></i>Create User</button></div>
+    <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-primary"><i class="bi bi-person-plus me-1"></i>Create User</button></div>
     </form>
   </div></div>
 </div>
@@ -199,44 +162,14 @@ $csrf = getCsrfToken();
     <div class="modal-header"><h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Edit User</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
     <form method="POST"><input type="hidden" name="csrf_token" value="<?= $csrf ?>"><input type="hidden" name="action" value="update_user"><input type="hidden" name="user_id" id="euId">
     <div class="modal-body"><div class="row g-3">
-      <div class="col-12">
-        <div class="d-flex justify-content-between align-items-center mb-1">
-          <label class="form-label mb-0">Full Name <span class="text-danger">*</span></label>
-          <small class="text-muted" id="euNameCount">0 / 100</small>
-        </div>
-        <input type="text" name="full_name" id="euName" class="form-control" required maxlength="100" oninput="userCharCount('euName','euNameCount',100)">
-      </div>
-      <div class="col-12">
-        <div class="d-flex justify-content-between align-items-center mb-1">
-          <label class="form-label mb-0">Email <span class="text-danger">*</span></label>
-          <small class="text-muted" id="euEmailCount">0 / 150</small>
-        </div>
-        <input type="email" name="email" id="euEmail" class="form-control" required maxlength="150" oninput="userCharCount('euEmail','euEmailCount',150)">
-      </div>
+      <div class="col-12"><label class="form-label">Full Name</label><input type="text" name="full_name" id="euName" class="form-control" required></div>
+      <div class="col-12"><label class="form-label">Email</label><input type="email" name="email" id="euEmail" class="form-control" required></div>
       <div class="col-md-6"><label class="form-label">Role</label><select name="role" id="euRole" class="form-select"><option value="Member">Member</option><option value="Manager">Manager</option><option value="Admin">Admin</option></select></div>
-      <div class="col-md-6">
-        <div class="d-flex justify-content-between align-items-center mb-1">
-          <label class="form-label mb-0">Department</label>
-          <small class="text-muted" id="euDeptCount">0 / 100</small>
-        </div>
-        <input type="text" name="department" id="euDept" class="form-control" maxlength="100" oninput="userCharCount('euDept','euDeptCount',100)">
-      </div>
-      <div class="col-md-6">
-        <div class="d-flex justify-content-between align-items-center mb-1">
-          <label class="form-label mb-0">Job Title</label>
-          <small class="text-muted" id="euTitleCount">0 / 100</small>
-        </div>
-        <input type="text" name="job_title" id="euTitle" class="form-control" maxlength="100" oninput="userCharCount('euTitle','euTitleCount',100)">
-      </div>
-      <div class="col-md-6">
-        <div class="d-flex justify-content-between align-items-center mb-1">
-          <label class="form-label mb-0">Phone</label>
-          <small class="text-muted" id="euPhoneCount">0 / 30</small>
-        </div>
-        <input type="text" name="phone" id="euPhone" class="form-control" maxlength="30" oninput="userCharCount('euPhone','euPhoneCount',30)">
-      </div>
+      <div class="col-md-6"><label class="form-label">Department</label><input type="text" name="department" id="euDept" class="form-control"></div>
+      <div class="col-md-6"><label class="form-label">Job Title</label><input type="text" name="job_title" id="euTitle" class="form-control"></div>
+      <div class="col-md-6"><label class="form-label">Phone</label><input type="text" name="phone" id="euPhone" class="form-control"></div>
     </div></div>
-    <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-primary" onclick="return validateEditUser()"><i class="bi bi-check me-1"></i>Save Changes</button></div>
+    <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-primary"><i class="bi bi-check me-1"></i>Save Changes</button></div>
     </form>
   </div></div>
 </div>
@@ -264,116 +197,9 @@ $csrf = getCsrfToken();
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-/* ── Password visibility toggle ── */
 function togglePwd(id,iconId){const i=document.getElementById(id),ic=document.getElementById(iconId);i.type=i.type==='password'?'text':'password';ic.className='bi bi-eye'+(i.type==='text'?'-slash':'');}
-
-/* ── Table search ── */
 function filterUsers(){const q=document.getElementById('srch').value.toLowerCase();document.querySelectorAll('#usersTable tbody tr').forEach(r=>r.style.display=r.textContent.toLowerCase().includes(q)?'':'none');}
-
-/* ── Character counter (matches KR modal style) ── */
-function userCharCount(inputId, counterId, max) {
-  const el  = document.getElementById(inputId);
-  const ctr = document.getElementById(counterId);
-  if (!el || !ctr) return;
-  const len = el.value.length;
-  ctr.textContent = `${len} / ${max}`;
-  ctr.style.color = len >= max ? 'var(--danger)' : len >= max * 0.9 ? 'var(--warning)' : '';
-  el.setCustomValidity(len > max ? `Cannot exceed ${max} characters.` : '');
-}
-
-/* ── Email format validation ── */
-function isValidEmail(email) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-}
-
-/* ── Create User validation ── */
-function validateCreateUser() {
-  const name  = document.getElementById('cName');
-  const email = document.getElementById('cEmail');
-  const pwd   = document.getElementById('createPwd');
-  let valid = true;
-
-  if (!name.value.trim()) {
-    name.setCustomValidity('Full name is required.');
-    valid = false;
-  } else { name.setCustomValidity(''); }
-
-  if (!email.value.trim()) {
-    email.setCustomValidity('Email is required.');
-    valid = false;
-  } else if (!isValidEmail(email.value)) {
-    email.setCustomValidity('Please enter a valid email address.');
-    valid = false;
-  } else { email.setCustomValidity(''); }
-
-  if (pwd.value.length < 8) {
-    pwd.setCustomValidity('Password must be at least 8 characters.');
-    valid = false;
-  } else { pwd.setCustomValidity(''); }
-
-  if (!valid) {
-    document.getElementById('createModal').querySelector('form').reportValidity();
-    return false;
-  }
-  return true;
-}
-
-/* ── Edit User validation ── */
-function validateEditUser() {
-  const name  = document.getElementById('euName');
-  const email = document.getElementById('euEmail');
-  let valid = true;
-
-  if (!name.value.trim()) {
-    name.setCustomValidity('Full name is required.');
-    valid = false;
-  } else { name.setCustomValidity(''); }
-
-  if (!email.value.trim()) {
-    email.setCustomValidity('Email is required.');
-    valid = false;
-  } else if (!isValidEmail(email.value)) {
-    email.setCustomValidity('Please enter a valid email address.');
-    valid = false;
-  } else { email.setCustomValidity(''); }
-
-  if (!valid) {
-    document.getElementById('editModal').querySelector('form').reportValidity();
-    return false;
-  }
-  return true;
-}
-
-/* ── Edit User — populate modal + sync counters ── */
-function editUser(u) {
-  const safe = (v) => v || '';
-  document.getElementById('euId').value    = u.id;
-  document.getElementById('euName').value  = safe(u.full_name);
-  document.getElementById('euEmail').value = safe(u.email);
-  document.getElementById('euRole').value  = safe(u.role);
-  document.getElementById('euDept').value  = safe(u.department);
-  document.getElementById('euTitle').value = safe(u.job_title);
-  document.getElementById('euPhone').value = safe(u.phone);
-  // Sync all counters to reflect pre-filled values
-  userCharCount('euName',  'euNameCount',  100);
-  userCharCount('euEmail', 'euEmailCount', 150);
-  userCharCount('euDept',  'euDeptCount',  100);
-  userCharCount('euTitle', 'euTitleCount', 100);
-  userCharCount('euPhone', 'euPhoneCount',  30);
-  new bootstrap.Modal(document.getElementById('editModal')).show();
-}
-
-/* ── Reset create modal counters on open ── */
-document.getElementById('createModal').addEventListener('show.bs.modal', () => {
-  ['cName','cEmail','cDept','cTitle','cPhone'].forEach(id => {
-    const limits = {cName:100,cEmail:150,cDept:100,cTitle:100,cPhone:30};
-    const el = document.getElementById(id);
-    if (el) el.value = '';
-    userCharCount(id, id+'Count', limits[id]);
-  });
-  document.getElementById('createPwd').value = '';
-});
-
+function editUser(u){document.getElementById('euId').value=u.id;document.getElementById('euName').value=u.full_name;document.getElementById('euEmail').value=u.email;document.getElementById('euRole').value=u.role;document.getElementById('euDept').value=u.department||'';document.getElementById('euTitle').value=u.job_title||'';document.getElementById('euPhone').value=u.phone||'';new bootstrap.Modal(document.getElementById('editModal')).show();}
 function resetPwd(id,name){document.getElementById('rpId').value=id;document.getElementById('rpName').textContent=name;new bootstrap.Modal(document.getElementById('resetModal')).show();}
 function toggleActive(id,current){if(!confirm(`${current?'Deactivate':'Activate'} this user?`))return;document.getElementById('toggleUid').value=id;document.getElementById('toggleForm').submit();}
 </script>

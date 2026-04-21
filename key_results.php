@@ -60,12 +60,12 @@ function pbClass(string $s): string { return match($s){'On Track'=>'pb-on-track'
     </div>
   </header>
   <div class="page-body">
-    <?php if ($role==='Member'): ?>
+    <!-- <?php if ($role==='Member'): ?>
     <div class="alert alert-info d-flex gap-2 mb-3" style="border-radius:12px;font-size:.88rem">
       <i class="bi bi-info-circle fs-5"></i>
       <div>You can <strong>update progress</strong> on key results assigned to you (<i class="bi bi-pencil-square"></i>). Others are view-only (<i class="bi bi-lock"></i>).</div>
     </div>
-    <?php endif; ?>
+    <?php endif; ?> -->
 
     <!-- Stats -->
     <div class="row g-3 mb-4">
