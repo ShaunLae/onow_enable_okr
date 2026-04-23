@@ -7,7 +7,10 @@ $user    = getCurrentUser();
 $role    = $user['role'];
 $userId  = $user['id'];
 $db      = getDB();
-$currentPage = 'dashboard';
+// $currentPage = 'dashboard';
+// #region agent log
+@file_put_contents(__DIR__.'/.cursor/debug-395bc3.log', json_encode(['sessionId'=>'395bc3','runId'=>'syntax-verify','hypothesisId'=>'H_verify','location'=>'dashboard.php:after-bootstrap','message'=>'dashboard parsed and booted','data'=>['role'=>$role],'timestamp'=>(int)round(microtime(true)*1000)])."\n", FILE_APPEND|LOCK_EX);
+#endregion
 
 // ─── Quarter filter resolution ────────────────────────────────────
 // ?q=Q2+2026 → validates → builds date bounds used per-query below.
@@ -438,67 +441,34 @@ $qLabel = $selectedQ ? "Filtered: $selectedQ" : 'All Periods';
 
 /* ── Print / PDF styles ── */
 @media print {
-  /* ── Hide chrome ── */
+  /* Hide all non-content chrome */
   .sidebar, .top-header, .no-print, .btn, select, button,
   #toastContainer { display: none !important; }
 
-  /* ── Reset layout ── */
-  * { box-sizing: border-box !important; }
-  html, body { width: 100% !important; margin: 0 !important; padding: 0 !important; }
-  .app-wrapper { display: block !important; }
-  .main-content { margin-left: 0 !important; width: 100% !important; }
-  .page-body    { padding: .75rem !important; width: 100% !important; }
+  /* Remove sidebar margin */
+  .main-content { margin-left: 0 !important; }
+  .page-body    { padding: .5rem !important; }
 
-  /* ── Force ALL Bootstrap grid columns to full width ── */
-  .row { display: block !important; width: 100% !important; }
-  [class*="col-"] {
-    display: block !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    flex: none !important;
-    padding: 0 !important;
-    margin-bottom: .6rem !important;
-  }
-
-  /* ── Cards ── */
+  /* Force white backgrounds so coloured cards print cleanly */
   body, .card, .stat-card { background: #fff !important; color: #000 !important; }
-  .card  { border: 1px solid #e2e8f0 !important; break-inside: avoid !important;
-            page-break-inside: avoid !important; margin-bottom: .6rem !important;
-            width: 100% !important; height: auto !important; }
-  .stat-card { break-inside: avoid !important; height: auto !important; }
-  .h-100 { height: auto !important; }
 
-  /* ── Stat cards: 2-up grid in print ── */
-  .stat-card-print-wrap { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: .5rem !important; }
+  /* Prevent cards splitting across pages */
+  .card, .stat-card, .kr-quick-row, .timeline-item { break-inside: avoid; }
 
-  /* ── Canvas: fixed height so charts don't overflow ── */
-  canvas {
-    display: block !important;
-    max-width: 100% !important;
-    width: 100% !important;
-    height: 220px !important;
-    max-height: 220px !important;
-  }
-  /* Donut gets its own smaller size */
-  #statusChart, #statusChartMember {
-    width: 160px !important;
-    height: 160px !important;
-    max-height: 160px !important;
-  }
+  /* Page break between major sections */
+  .page-break-before { page-break-before: always; }
 
-  /* ── Progress bars ── */
-  .progress { overflow: visible !important; }
+  /* Print header shown only when printing */
+  .print-header { display: block !important; }
+
+  /* Keep progress bars visible in print */
   .progress-bar { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
-  /* ── Typography ── */
-  .kr-quick-row, .timeline-item { break-inside: avoid; }
-  .page-break-before { page-break-before: always; }
-  .print-header { display: block !important; }
-  .print-quarter-label { display: inline !important; }
+  /* Scale down chart canvases so they fit */
+  canvas { max-width: 100% !important; height: auto !important; }
 
-  /* ── Overflow guards ── */
-  .card-body { overflow: visible !important; max-height: none !important; }
-  p, div, span { overflow-wrap: break-word !important; word-break: break-word !important; }
+  /* Quarter label shown in print header */
+  .print-quarter-label { display: inline !important; }
 }
 
 /* Hidden on screen, visible when printing */
@@ -1179,35 +1149,18 @@ renderChart();
 <script>
 /* ── Export PDF (client-side print) ────────────────────────────── */
 function exportPDF() {
+    // Set a clean document title so the browser uses it as the PDF filename
     const original = document.title;
     const quarter  = '<?= addslashes($selectedQ ?: 'All Periods') ?>';
     const role     = '<?= $role ?>';
     const date     = new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
     document.title = `ONOW Enable Dashboard — ${role} — ${quarter} — ${date}`;
 
-    // Resize all Chart.js canvases to a fixed print-safe size before printing.
-    // This prevents the canvas from overflowing its card in the PDF.
-    const PRINT_W = 600, PRINT_H = 220;
-    const origSizes = [];
-    document.querySelectorAll('canvas').forEach(c => {
-        origSizes.push({ el: c, w: c.style.width, h: c.style.height });
-        c.style.width  = PRINT_W + 'px';
-        c.style.height = PRINT_H + 'px';
-    });
-    // Donut canvas gets its own smaller size
-    ['statusChart','statusChartMember'].forEach(id => {
-        const c = document.getElementById(id);
-        if (c) { c.style.width = '160px'; c.style.height = '160px'; }
-    });
+    // Trigger browser print dialog (Save as PDF)
+    window.print();
 
-    // Give the browser a frame to re-layout before opening print dialog
-    setTimeout(() => {
-        window.print();
-
-        // Restore canvas sizes and title after dialog closes
-        origSizes.forEach(({ el, w, h }) => { el.style.width = w; el.style.height = h; });
-        document.title = original;
-    }, 300);
+    // Restore title after print dialog closes
+    document.title = original;
 }
 </script>
 </body>

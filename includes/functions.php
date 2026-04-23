@@ -317,6 +317,9 @@ function deleteObjective(int $id, int $userId): array {
     } catch(PDOException $e){ $db->rollBack(); return ['success'=>false,'message'=>'Failed to delete: '.$e->getMessage()]; }
 }
 
+    
+
+
 /* ══════════════════════════════════════════════════
    KEY RESULTS
 ══════════════════════════════════════════════════ */

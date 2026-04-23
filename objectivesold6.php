@@ -92,16 +92,15 @@ function pbClass(string $status): string {
       </form>
     </div></div>
 
-    <!-- No-match state: shown by JS when search box returns 0 results (only relevant when objList exists) -->
+    <?php if (empty($objectives)): ?>
+    <div class="empty-state card"><div class="card-body">
+      <i class="bi bi-bullseye"></i><h5>No Objectives Found</h5><p class="small">Create your first objective to get started.</p>
+      <button class="btn btn-primary btn-sm mt-2" onclick="openCreateModal()"><i class="bi bi-plus-circle me-1"></i> Create Objective</button>
+    </div></div>
+    <!-- No-match state shown by JS when search returns 0 results -->
     <div id="noMatchState" class="empty-state card" style="display:none"><div class="card-body">
       <i class="bi bi-search"></i><h5>No Objectives Match</h5><p class="small">Try a different search term or clear the filter.</p>
       <button class="btn btn-outline-secondary btn-sm mt-2" onclick="document.getElementById('objSearch').value='';filterAndPage()"><i class="bi bi-x-circle me-1"></i>Clear Search</button>
-    </div></div>
-    <?php if (empty($objectives)): ?>
-    <!-- Server returned zero rows — filter/period/team produced nothing -->
-    <div id="emptyFilterState" class="empty-state card"><div class="card-body">
-      <i class="bi bi-bullseye"></i><h5>No Objectives Found</h5><p class="small">No objectives match the selected filter. Try clearing the filter or create a new objective.</p>
-      <button class="btn btn-primary btn-sm mt-2" onclick="openCreateModal()"><i class="bi bi-plus-circle me-1"></i> Create Objective</button>
     </div></div>
     <?php else: ?>
     <div id="objList">
@@ -333,22 +332,14 @@ function pbClass(string $status): string {
 
             <!-- Title + Description — always visible -->
             <div class="col-12">
-              <div class="d-flex justify-content-between align-items-center mb-1">
-                <label class="form-label mb-0">Title <span class="text-danger">*</span></label>
-                <small class="text-muted" id="objTitleCount">0 / 255</small>
-              </div>
+              <label class="form-label">Title <span class="text-danger">*</span></label>
               <input type="text" name="title" id="objTitle" class="form-control" required
-                     maxlength="255" placeholder="e.g. Grow community reach by Q2"
-                     oninput="charCount('objTitle','objTitleCount',255)">
+                     maxlength="255" placeholder="e.g. Grow community reach by Q2">
             </div>
             <div class="col-12">
-              <div class="d-flex justify-content-between align-items-center mb-1">
-                <label class="form-label mb-0">Description</label>
-                <small class="text-muted" id="objDescCount">0 / 500</small>
-              </div>
+              <label class="form-label">Description</label>
               <textarea name="description" id="objDesc" class="form-control" rows="2"
-                        maxlength="500" placeholder="Why is this objective important?"
-                        oninput="charCount('objDesc','objDescCount',500)"></textarea>
+                        placeholder="Why is this objective important?"></textarea>
             </div>
 
             <!-- ── Visibility Toggle (Organisational + Manager only) ── -->
@@ -385,6 +376,45 @@ function pbClass(string $status): string {
             <?php endif; ?>
 
             <!-- Owner: shown only for Team type (Manager). Auto-set for Org/Personal. -->
+            <?php if ($role === 'Manager'): ?>
+            <!-- grp-owner shown/hidden by applyTypeRules() -->
+            <div id="grp-owner" class="col-md-6" style="display:none">
+              <label class="form-label fw-700">
+                <i class="bi bi-person text-primary me-1"></i>Owner
+                <span class="text-danger">*</span>
+              </label>
+              <select name="owner_id" id="objOwner" class="form-select">
+                <option value="<?= $userId ?>"><?= htmlspecialchars($user['full_name']) ?> (You)</option>
+                <?php foreach ($teammates as $t): ?>
+                <option value="<?= $t['id'] ?>"><?= htmlspecialchars($t['full_name']) ?> (<?= $t['role'] ?>)</option>
+                <?php endforeach; ?>
+              </select>
+              <div class="form-text">Only members assigned to the selected team.</div>
+            </div>
+            <!-- Auto-owner hidden input — always present; owner_id value set by applyTypeRules -->
+            <input type="hidden" id="objOwnerAuto" name="owner_id" value="<?= $userId ?>">
+            <?php else: ?>
+            <input type="hidden" name="owner_id" value="<?= $userId ?>">
+            <?php endif; ?>
+
+            <!-- Time Period + Dates — always visible -->
+            <div class="col-md-4">
+              <label class="form-label">Time Period <span class="text-danger">*</span></label>
+              <select name="time_period" id="objPeriod" class="form-select" required>
+                <?php foreach ($periods as $p): ?>
+                <option value="<?= $p ?>"><?= $p ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Start Date</label>
+              <input type="date" name="start_date" id="objStart" class="form-control">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">End Date</label>
+              <input type="date" name="end_date" id="objEnd" class="form-control">
+            </div>
+
             <!-- ── CONDITIONAL SECTION: Team (Team type only) ── -->
             <div id="grp-team" class="col-12" style="display:none">
               <label class="form-label fw-700">
@@ -434,45 +464,6 @@ function pbClass(string $status): string {
               </div>
             </div>
             <?php endif; ?>
-
-            <?php if ($role === 'Manager'): ?>
-            <!-- grp-owner shown/hidden by applyTypeRules() -->
-            <div id="grp-owner" class="col-md-6" style="display:none">
-              <label class="form-label fw-700">
-                <i class="bi bi-person text-primary me-1"></i>Owner
-                <span class="text-danger">*</span>
-              </label>
-              <select name="owner_id" id="objOwner" class="form-select">
-                <option value="<?= $userId ?>"><?= htmlspecialchars($user['full_name']) ?> (You)</option>
-                <?php foreach ($teammates as $t): ?>
-                <option value="<?= $t['id'] ?>"><?= htmlspecialchars($t['full_name']) ?> (<?= $t['role'] ?>)</option>
-                <?php endforeach; ?>
-              </select>
-              <div class="form-text">Only members assigned to the selected team.</div>
-            </div>
-            <!-- Auto-owner hidden input — always present; owner_id value set by applyTypeRules -->
-            <input type="hidden" id="objOwnerAuto" name="owner_id" value="<?= $userId ?>">
-            <?php else: ?>
-            <input type="hidden" name="owner_id" value="<?= $userId ?>">
-            <?php endif; ?>
-
-            <!-- Time Period + Dates — always visible -->
-            <div class="col-md-4">
-              <label class="form-label">Time Period <span class="text-danger">*</span></label>
-              <select name="time_period" id="objPeriod" class="form-select" required>
-                <?php foreach ($periods as $p): ?>
-                <option value="<?= $p ?>"><?= $p ?></option>
-                <?php endforeach; ?>
-              </select>
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">Start Date</label>
-              <input type="date" name="start_date" id="objStart" class="form-control">
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">End Date</label>
-              <input type="date" name="end_date" id="objEnd" class="form-control">
-            </div>
 
             <!-- ── CONDITIONAL SECTION: Link to Parent ── -->
             <!-- Shown for Team (parent = Organisational) and Personal (parent = Team) -->
@@ -856,11 +847,8 @@ function openCreateModal() {
   document.getElementById('objForm').reset();
   document.getElementById('objId').value = '';
   document.getElementById('attPreview').innerHTML = '';
-  document.getElementById('attInput').value = '';
   document.querySelectorAll('.member-check').forEach(c => c.checked = false);
-  // Reset obj + KR char counters
-  charCount('objTitle','objTitleCount',255);
-  charCount('objDesc','objDescCount',500);
+  // Reset KR char counters if they exist (shared form reset)
   ['krTitle','krDesc','krUnit'].forEach(id => charCount(id, id+'Count', {krTitle:255,krDesc:500,krUnit:50}[id]));
 
   <?php if ($role === 'Manager'): ?>
@@ -914,24 +902,13 @@ function editObjective(id) {
     document.getElementById('objId').value    = o.id;
     document.getElementById('objTitle').value = o.title;
     document.getElementById('objDesc').value  = o.description || '';
-    charCount('objTitle','objTitleCount',255);
-    charCount('objDesc','objDescCount',500);
     // owner_id: for Team type, set dropdown; for Org/Personal, set hidden auto-field
     if (document.getElementById('objOwnerAuto')) document.getElementById('objOwnerAuto').value = o.owner_id || ME;
     if (document.getElementById('objOwner'))     document.getElementById('objOwner').value     = o.owner_id || ME;
     document.getElementById('objPeriod').value = o.time_period;
     document.getElementById('objStart').value  = o.start_date  || '';
     document.getElementById('objEnd').value    = o.end_date    || '';
-    // Fetch and render existing attachments for this objective
-    const attPreview = document.getElementById('attPreview');
-    attPreview.innerHTML = '<div class="text-muted small py-1"><div class="spinner-border spinner-border-sm me-1"></div>Loading attachments…</div>';
-    fetch(`php/detail_api.php?id=${id}`)
-      .then(r => r.json())
-      .then(d => {
-        attPreview.innerHTML = '';
-        (d.attachments || []).forEach(a => renderExistingAtt(a, attPreview));
-      })
-      .catch(() => { attPreview.innerHTML = ''; });
+    document.getElementById('attPreview').innerHTML = '';
 
     // Set type (hidden field) and apply visibility rules first
     const type = o.type || 'Personal';
@@ -1052,68 +1029,14 @@ document.getElementById('deleteConfirmBtn').addEventListener('click', () => {
 
 document.getElementById('attInput')?.addEventListener('change', function () {
   const p = document.getElementById('attPreview');
-  // Remove any previously staged (new) file rows before re-adding
-  p.querySelectorAll('.att-new').forEach(el => el.remove());
-  Array.from(this.files).forEach((f, idx) => {
+  p.innerHTML = '';
+  Array.from(this.files).forEach(f => {
     const d = document.createElement('div');
-    d.className = 'att-item att-new d-flex align-items-center gap-2';
-    d.dataset.fileIdx = idx;
-    d.innerHTML = `
-      <i class="bi bi-file-earmark text-muted"></i>
-      <span class="flex-grow-1" style="font-size:.83rem">${f.name}</span>
-      <span class="text-muted" style="font-size:.72rem">${(f.size/1024).toFixed(1)} KB</span>
-      <button type="button" class="btn btn-sm btn-outline-danger btn-icon ms-1"
-              onclick="removeNewAtt(this)" title="Remove">
-        <i class="bi bi-x"></i>
-      </button>`;
+    d.className = 'att-item';
+    d.innerHTML = `<i class="bi bi-file-earmark text-muted"></i><span>${f.name}</span><span class="text-muted" style="font-size:.72rem">${(f.size / 1024).toFixed(1)} KB</span>`;
     p.appendChild(d);
   });
 });
-
-/* Remove a newly staged (not yet uploaded) attachment row */
-function removeNewAtt(btn) {
-  btn.closest('.att-new').remove();
-  // Reset file input so the removed file isn't uploaded
-  document.getElementById('attInput').value = '';
-}
-
-/* Render an existing saved attachment row with a delete button */
-function renderExistingAtt(a, container) {
-  const d = document.createElement('div');
-  d.className = 'att-item att-existing d-flex align-items-center gap-2';
-  d.dataset.attId = a.id;
-  d.innerHTML = `
-    <i class="bi ${a.icon} text-muted"></i>
-    <a href="uploads/${a.file_name}" target="_blank" class="flex-grow-1" style="font-size:.83rem">${a.original_name}</a>
-    <span class="text-muted" style="font-size:.72rem">${a.size_fmt}</span>
-    <button type="button" class="btn btn-sm btn-outline-danger btn-icon ms-1"
-            onclick="deleteAttachment(${a.id}, this)" title="Delete attachment">
-      <i class="bi bi-trash"></i>
-    </button>`;
-  container.appendChild(d);
-}
-
-/* Delete an existing saved attachment */
-function deleteAttachment(attId, btn) {
-  if (!confirm('Delete this attachment?')) return;
-  const fd = new FormData();
-  fd.append('action',     'delete_attachment');
-  fd.append('attachment_id', attId);
-  fd.append('csrf_token', CSRF);
-  btn.disabled = true;
-  fetch('php/obj_api.php', { method: 'POST', body: fd })
-    .then(r => r.json())
-    .then(res => {
-      if (res.success) {
-        btn.closest('.att-existing').remove();
-        toast('Attachment deleted.');
-      } else {
-        btn.disabled = false;
-        toast(res.message || 'Could not delete attachment.', 'error');
-      }
-    })
-    .catch(() => { btn.disabled = false; toast('Network error', 'error'); });
-}
 
 /* ── Detail Panel ────────────────────────────── */
 function openDetail(id){
@@ -1361,29 +1284,21 @@ const PAGE_SIZE = 10;
 let currentPage = 1;
 
 function filterAndPage() {
-  const q        = (document.getElementById('objSearch')?.value || '').toLowerCase().trim();
-  const cards    = Array.from(document.querySelectorAll('#objList .okr-card'));
-  const noMatch  = document.getElementById('noMatchState');
-  const countEl  = document.getElementById('objCount');
-  const objList  = document.getElementById('objList');
-
-  // If #objList doesn't exist, server returned zero rows (filter produced nothing).
-  // Only #emptyFilterState should show — never #noMatchState.
-  if (!objList) {
-    if (noMatch) noMatch.style.display = 'none';
-    return;
-  }
+  const q      = (document.getElementById('objSearch')?.value || '').toLowerCase().trim();
+  const cards  = Array.from(document.querySelectorAll('#objList .okr-card'));
+  const noMatch= document.getElementById('noMatchState');
+  const countEl= document.getElementById('objCount');
 
   // Filter: show cards that match the search query
   const visible = cards.filter(card => {
-    const text  = card.textContent.toLowerCase();
+    const text = card.textContent.toLowerCase();
     const match = !q || text.includes(q);
-    card.style.display = 'none'; // hide all first; pager will reveal the slice
+    card.style.display = 'none'; // hide all first; pager will reveal visible ones
     return match;
   });
 
-  // Show #noMatchState only when a search term produced zero results
-  if (noMatch) noMatch.style.display = (q && visible.length === 0) ? '' : 'none';
+  // No results state
+  if (noMatch) noMatch.style.display = visible.length === 0 ? '' : 'none';
 
   // Update count label
   if (countEl) {

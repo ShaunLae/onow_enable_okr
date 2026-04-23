@@ -231,9 +231,9 @@ $activeTeam = getTeam($activeTeamId);
         — team-scoped objectives only
       </div>
     </div>
-    <a href="dashboard.php" class="btn btn-sm btn-outline-secondary ms-auto">
+    <!-- <a href="dashboard.php" class="btn btn-sm btn-outline-secondary ms-auto">
       <i class="bi bi-arrow-left me-1"></i>Dashboard
-    </a>
+    </a> -->
   </header>
 
   <?php if (empty($myTeams)): ?>
