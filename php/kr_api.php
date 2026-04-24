@@ -94,7 +94,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($role === 'Member' && (int)$kr['owner_id'] !== $userId) {
             echo json_encode(['success'=>false,'message'=>'You can only update progress on key results assigned to you']); exit;
         }
-        echo json_encode(updateKRProgress($krId, (float)($_POST['new_value'] ?? 0), $_POST['note'] ?? '', $userId)); exit;
+        $newValue = (float)($_POST['new_value'] ?? 0);
+        if ($newValue > (float)$kr['target_value']) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'New value cannot exceed the target value.'
+            ]); exit;
+        }
+        echo json_encode(updateKRProgress($krId, $newValue, $_POST['note'] ?? '', $userId)); exit;
     }
 }
 

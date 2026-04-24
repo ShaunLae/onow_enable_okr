@@ -18,6 +18,23 @@ $userTeams     = getUserTeams($userId);
 $teammates     = $role === 'Manager' ? getTeammates($userId) : [];
 $csrf = getCsrfToken();
 
+// Direct child counts for warning when deleting a parent objective.
+$directChildCounts = [];
+if (!empty($objectives)) {
+    $ids = array_column($objectives, 'id');
+    $ph = implode(',', array_fill(0, count($ids), '?'));
+    $cc = getDB()->prepare("
+        SELECT parent_objective_id, COUNT(*) AS cnt
+        FROM objectives
+        WHERE deleted_at IS NULL AND parent_objective_id IN ($ph)
+        GROUP BY parent_objective_id
+    ");
+    $cc->execute($ids);
+    foreach ($cc->fetchAll() as $r) {
+        $directChildCounts[(int)$r['parent_objective_id']] = (int)$r['cnt'];
+    }
+}
+
 function pbClass(string $status): string {
     return match($status) { 'On Track'=>'pb-on-track','Completed'=>'pb-completed','At Risk','Behind'=>'pb-at-risk', default=>'' };
 }
@@ -163,7 +180,7 @@ function pbClass(string $status): string {
         <div class="d-flex gap-1 flex-shrink-0">
           <button class="btn btn-sm btn-outline-primary btn-icon" onclick="openDetail(<?= $obj['id'] ?>)" title="View Details"><i class="bi bi-eye"></i></button>
           <?php if ($canEdit): ?><button class="btn btn-sm btn-outline-secondary btn-icon" onclick="editObjective(<?= $obj['id'] ?>)" title="Edit"><i class="bi bi-pencil"></i></button><?php endif; ?>
-          <?php if ($canEdit): ?><button class="btn btn-sm btn-outline-danger btn-icon" onclick="confirmDelete(<?= $obj['id'] ?>,'<?= htmlspecialchars(addslashes($obj['title'])) ?>')" title="Delete"><i class="bi bi-trash"></i></button><?php endif; ?>
+          <?php if ($canEdit): ?><button class="btn btn-sm btn-outline-danger btn-icon" onclick="confirmDelete(<?= $obj['id'] ?>,'<?= htmlspecialchars(addslashes($obj['title'])) ?>',<?= (int)($directChildCounts[(int)$obj['id']] ?? 0) ?>)" title="Delete"><i class="bi bi-trash"></i></button><?php endif; ?>
         </div>
       </div>
       <?php if ($obj['description']): ?><p class="text-muted mb-2" style="font-size:.83rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden"><?= htmlspecialchars($obj['description']) ?></p><?php endif; ?>
@@ -386,26 +403,28 @@ function pbClass(string $status): string {
 
             <!-- Owner: shown only for Team type (Manager). Auto-set for Org/Personal. -->
             <!-- ── CONDITIONAL SECTION: Team (Team type only) ── -->
-            <div id="grp-team" class="col-12" style="display:none">
-              <label class="form-label fw-700">
-                <i class="bi bi-diagram-3 text-primary me-1"></i>Assign to Team
-                <span class="text-danger">*</span>
-              </label>
-              <?php if (!empty($userTeams)): ?>
-              <select name="team_id" id="objTeam" class="form-select" onchange="onTeamChange(this.value)">
-                <option value="">— Select a team —</option>
-                <?php foreach ($userTeams as $t): ?>
-                <option value="<?= $t['id'] ?>"><?= htmlspecialchars($t['name']) ?></option>
-                <?php endforeach; ?>
-              </select>
-              <div class="form-text" id="teamNote">Selecting a team filters the member list below.</div>
-              <?php else: ?>
-              <div class="alert alert-warning py-2 small mb-0">
-                <i class="bi bi-exclamation-triangle me-1"></i>You are not in any team. Contact your administrator.
+            <?php if ($role === 'Manager'): ?>
+              <div id="grp-team" class="col-12" style="display:none">
+                <label class="form-label fw-700">
+                  <i class="bi bi-diagram-3 text-primary me-1"></i>Assign to Team
+                  <span class="text-danger">*</span>
+                </label>
+                <?php if (!empty($userTeams)): ?>
+                <select name="team_id" id="objTeam" class="form-select" onchange="onTeamChange(this.value)">
+                  <option value="">— Select a team —</option>
+                  <?php foreach ($userTeams as $t): ?>
+                  <option value="<?= $t['id'] ?>"><?= htmlspecialchars($t['name']) ?></option>
+                  <?php endforeach; ?>
+                </select>
+                <div class="form-text" id="teamNote">Selecting a team filters the member list below.</div>
+                <?php else: ?>
+                <div class="alert alert-warning py-2 small mb-0">
+                  <i class="bi bi-exclamation-triangle me-1"></i>You are not in any team. Contact your administrator.
+                </div>
+                <input type="hidden" name="team_id" value="">
+                <?php endif; ?>
               </div>
-              <input type="hidden" name="team_id" value="">
-              <?php endif; ?>
-            </div>
+            <?php endif; ?>
 
             <!-- ── CONDITIONAL SECTION: Assign Members (Team type only) ── -->
             <?php if ($role === 'Manager'): ?>
@@ -626,7 +645,7 @@ function pbClass(string $status): string {
       <div style="width:56px;height:56px;background:var(--danger-lt);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto .75rem"><i class="bi bi-trash text-danger" style="font-size:1.4rem"></i></div>
       <h6 class="fw-800 mb-1">Delete Objective?</h6>
       <p class="text-muted small mb-0" id="deleteTitle"></p>
-      <p class="text-danger small mt-1">All key results and attachments will also be soft-deleted.</p>
+      <p class="text-danger small mt-1" id="deleteWarning">All key results and attachments will also be soft-deleted.</p>
     </div>
     <div class="modal-footer justify-content-center border-0 pt-0">
       <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
@@ -1002,17 +1021,23 @@ function submitObjective() {
   fetch('php/obj_api.php', { method: 'POST', body: data }).then(r => r.json()).then(res => {
     btn.disabled = false;
     if (res.success) {
-      if (files.length > 0 && res.id) {
+      const objectiveId = res.id || document.getElementById('objId').value;
+      if (files.length > 0 && objectiveId) {
         const ups = Array.from(files).map(f => {
           const fd = new FormData();
           fd.append('csrf_token', CSRF);
           fd.append('action', 'upload_attachment');
-          fd.append('objective_id', res.id);
+          fd.append('objective_id', objectiveId);
           fd.append('attachment', f);
           return fetch('php/obj_api.php', { method: 'POST', body: fd }).then(r => r.json());
         });
-        Promise.all(ups).then(() => {
-          toast('Objective saved with attachments!');
+        Promise.all(ups).then(results => {
+          const failed = results.filter(r => !r.success);
+          if (failed.length) {
+            toast(`Objective saved. ${failed.length} attachment(s) failed to upload.`, 'warning');
+          } else {
+            toast('Objective saved with attachments!');
+          }
           bootstrap.Modal.getInstance(document.getElementById('objModal')).hide();
           setTimeout(() => location.reload(), 800);
         });
@@ -1027,9 +1052,17 @@ function submitObjective() {
   }).catch(() => { btn.disabled = false; toast('Network error', 'error'); });
 }
 
-function confirmDelete(id, title) {
+function confirmDelete(id, title, linkedChildren = 0) {
   pendingDeleteId = id;
   document.getElementById('deleteTitle').textContent = `"${title}"`;
+  const warningEl = document.getElementById('deleteWarning');
+  if (warningEl) {
+    if (linkedChildren > 0) {
+      warningEl.textContent = `${linkedChildren} linked objective${linkedChildren !== 1 ? 's' : ''} will become unlinked.`;
+    } else {
+      warningEl.textContent = 'All key results and attachments will also be soft-deleted.';
+    }
+  }
   new bootstrap.Modal(document.getElementById('deleteModal')).show();
 }
 document.getElementById('deleteConfirmBtn').addEventListener('click', () => {
@@ -1050,11 +1083,12 @@ document.getElementById('deleteConfirmBtn').addEventListener('click', () => {
   });
 });
 
-document.getElementById('attInput')?.addEventListener('change', function () {
+function renderNewAttPreview() {
+  const input = document.getElementById('attInput');
   const p = document.getElementById('attPreview');
   // Remove any previously staged (new) file rows before re-adding
   p.querySelectorAll('.att-new').forEach(el => el.remove());
-  Array.from(this.files).forEach((f, idx) => {
+  Array.from(input?.files || []).forEach((f, idx) => {
     const d = document.createElement('div');
     d.className = 'att-item att-new d-flex align-items-center gap-2';
     d.dataset.fileIdx = idx;
@@ -1068,13 +1102,22 @@ document.getElementById('attInput')?.addEventListener('change', function () {
       </button>`;
     p.appendChild(d);
   });
-});
+}
+
+document.getElementById('attInput')?.addEventListener('change', renderNewAttPreview);
 
 /* Remove a newly staged (not yet uploaded) attachment row */
 function removeNewAtt(btn) {
-  btn.closest('.att-new').remove();
-  // Reset file input so the removed file isn't uploaded
-  document.getElementById('attInput').value = '';
+  const row = btn.closest('.att-new');
+  const removeIdx = parseInt(row?.dataset.fileIdx || '-1', 10);
+  const input = document.getElementById('attInput');
+  if (!input || Number.isNaN(removeIdx) || removeIdx < 0) return;
+  const dt = new DataTransfer();
+  Array.from(input.files).forEach((file, idx) => {
+    if (idx !== removeIdx) dt.items.add(file);
+  });
+  input.files = dt.files;
+  renderNewAttPreview();
 }
 
 /* Render an existing saved attachment row with a delete button */

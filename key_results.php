@@ -161,6 +161,7 @@ function pbClass(string $s): string { return match($s){'On Track'=>'pb-on-track'
         <div class="mb-3">
           <label class="form-label">New Value <span class="text-danger">*</span></label>
           <div class="input-group"><input type="number" name="new_value" id="progValue" class="form-control" step="any" min="0" required><span class="input-group-text" id="progTargetLabel">/ 100</span></div>
+          <div class="invalid-feedback" id="progValueFeedback"></div>
           <div class="mt-2">
             <div class="d-flex justify-content-between mb-1"><small class="text-muted">Estimated progress</small><small class="fw-700" id="progPct">0%</small></div>
             <div class="progress"><div class="progress-bar pb-on-track" id="progBar" style="width:0%"></div></div>
@@ -254,13 +255,44 @@ function openProgressModal(krId,title,current,target){
 }
 document.getElementById('progValue')?.addEventListener('input',updatePreview);
 function updatePreview(){
-  const v=parseFloat(document.getElementById('progValue').value)||0;
-  const p=Math.min(100,Math.round((v/progTarget)*100));
-  document.getElementById('progPct').textContent=p+'%';
-  document.getElementById('progBar').style.width=p+'%';
+  const input=document.getElementById('progValue');
+  const feedback=document.getElementById('progValueFeedback');
+  const bar=document.getElementById('progBar');
+  const pctEl=document.getElementById('progPct');
+  const v=parseFloat(input?.value)||0;
+
+  if(v>progTarget){
+    input?.classList.add('is-invalid');
+    if(feedback) feedback.textContent=`Value cannot exceed the target (${progTarget}). Enter ${progTarget} or less.`;
+    input?.setCustomValidity(`Cannot exceed target value of ${progTarget}.`);
+    if(bar) bar.style.width='100%';
+    if(pctEl) pctEl.textContent='100%';
+    return;
+  }
+
+  input?.classList.remove('is-invalid');
+  if(feedback) feedback.textContent='';
+  input?.setCustomValidity('');
+
+  const p=progTarget>0?Math.min(100,Math.round((v/progTarget)*100)):0;
+  if(pctEl) pctEl.textContent=p+'%';
+  if(bar) bar.style.width=p+'%';
+
+  bar?.classList.remove('pb-on-track','pb-at-risk','pb-behind');
+  if(p>=70) bar?.classList.add('pb-on-track');
+  else if(p>=40) bar?.classList.add('pb-at-risk');
+  else bar?.classList.add('pb-behind');
 }
 function submitProgress(){
   const form=document.getElementById('progressForm');
+  const input=document.getElementById('progValue');
+  const v=parseFloat(input?.value)||0;
+  if(v>progTarget){
+    input?.setCustomValidity(`Cannot exceed target value of ${progTarget}.`);
+    form.reportValidity();
+    return;
+  }
+  input?.setCustomValidity('');
   if(!form.checkValidity()){form.reportValidity();return;}
   fetch('php/kr_api.php',{method:'POST',body:new FormData(form)}).then(r=>r.json()).then(res=>{
     if(res.success){toast('Progress updated!');bootstrap.Modal.getInstance(document.getElementById('progressModal')).hide();setTimeout(()=>location.reload(),800);}

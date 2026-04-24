@@ -35,10 +35,25 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
     if($action==='upload_attachment'){
         $objId=(int)($_POST['objective_id']??0);
         if(!$objId||empty($_FILES['attachment'])){echo json_encode(['success'=>false,'message'=>'No file']);exit;}
+        $o=getObjective($objId);
+        if(!$o){echo json_encode(['success'=>false,'message'=>'Objective not found']);exit;}
+        if($role==='Member' && (int)$o['owner_id']!==$userId){echo json_encode(['success'=>false,'message'=>'Not authorised']);exit;}
+        if($role==='Manager' && (int)$o['created_by']!==$userId){echo json_encode(['success'=>false,'message'=>'Not authorised']);exit;}
         echo json_encode(saveAttachment($objId,$_FILES['attachment'],$userId));exit;
     }
     if($action==='delete_attachment'){
-        echo json_encode(deleteAttachment((int)($_POST['attachment_id']??0)));exit;
+        $attId=(int)($_POST['attachment_id']??0);
+        if(!$attId){echo json_encode(['success'=>false,'message'=>'Attachment not found']);exit;}
+        $db=getDB();
+        $s=$db->prepare("SELECT objective_id FROM objective_attachments WHERE id=?");
+        $s->execute([$attId]);
+        $att=$s->fetch();
+        if(!$att){echo json_encode(['success'=>false,'message'=>'Attachment not found']);exit;}
+        $o=getObjective((int)$att['objective_id']);
+        if(!$o){echo json_encode(['success'=>false,'message'=>'Objective not found']);exit;}
+        if($role==='Member' && (int)$o['owner_id']!==$userId){echo json_encode(['success'=>false,'message'=>'Not authorised']);exit;}
+        if($role==='Manager' && (int)$o['created_by']!==$userId){echo json_encode(['success'=>false,'message'=>'Not authorised']);exit;}
+        echo json_encode(deleteAttachment($attId));exit;
     }
 }
 echo json_encode(['success'=>false,'message'=>'Invalid request']);

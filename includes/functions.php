@@ -285,7 +285,7 @@ function updateObjective(int $id, array $d, int $userId): array {
     } catch(PDOException $e){ return ['success'=>false,'message'=>'Failed to update objective.']; }
 }
 
-/** Soft-delete objective + all descendants + their key results (atomic, with transaction) */
+/** Soft-delete one objective, unlink direct children, keep children alive (atomic, with transaction) */
 function deleteObjective(int $id, int $userId): array {
     $db = getDB();
     try {
@@ -294,26 +294,24 @@ function deleteObjective(int $id, int $userId): array {
         $s->execute([$id]); $obj = $s->fetch();
         if (!$obj) { $db->rollBack(); return ['success'=>false,'message'=>'Objective not found or already deleted.']; }
 
-        // Collect all descendant IDs via iterative BFS
-        $toDelete = [$id]; $queue = [$id];
-        while (!empty($queue)) {
-            $pid = array_shift($queue);
-            $cs = $db->prepare("SELECT id FROM objectives WHERE parent_objective_id=? AND deleted_at IS NULL");
-            $cs->execute([$pid]);
-            foreach ($cs->fetchAll(PDO::FETCH_COLUMN) as $cid) { $toDelete[]=$cid; $queue[]=$cid; }
-        }
+        // Count direct children that will be unlinked from this parent.
+        $countStmt = $db->prepare("SELECT COUNT(*) FROM objectives WHERE parent_objective_id=? AND deleted_at IS NULL");
+        $countStmt->execute([$id]);
+        $unlinkedCount = (int)$countStmt->fetchColumn();
 
-        // Soft-delete all KRs under collected objectives
-        $krStmt = $db->prepare("UPDATE key_results SET deleted_at=NOW() WHERE objective_id=? AND deleted_at IS NULL");
-        foreach ($toDelete as $oid) $krStmt->execute([$oid]);
+        // Unlink direct children only; children survive independently.
+        $db->prepare("UPDATE objectives SET parent_objective_id=NULL, updated_at=NOW() WHERE parent_objective_id=? AND deleted_at IS NULL")
+           ->execute([$id]);
 
-        // Soft-delete all objectives
-        $ph = implode(',',array_fill(0,count($toDelete),'?'));
-        $db->prepare("UPDATE objectives SET deleted_at=NOW() WHERE id IN($ph) AND deleted_at IS NULL")->execute($toDelete);
+        // Soft-delete KRs under this objective only.
+        $db->prepare("UPDATE key_results SET deleted_at=NOW() WHERE objective_id=? AND deleted_at IS NULL")->execute([$id]);
+
+        // Soft-delete selected objective only.
+        $db->prepare("UPDATE objectives SET deleted_at=NOW() WHERE id=? AND deleted_at IS NULL")->execute([$id]);
 
         $db->commit();
-        logActivity($userId,'SOFT_DELETE_OBJECTIVE','objective',$id,"Soft-deleted '{$obj['title']}' and ".(count($toDelete)-1)." child(ren).");
-        return ['success'=>true,'deleted_count'=>count($toDelete)];
+        logActivity($userId,'SOFT_DELETE_OBJECTIVE','objective',$id,"Soft-deleted '{$obj['title']}' and unlinked {$unlinkedCount} direct child objective(s).");
+        return ['success'=>true,'deleted_count'=>1,'unlinked_count'=>$unlinkedCount];
     } catch(PDOException $e){ $db->rollBack(); return ['success'=>false,'message'=>'Failed to delete: '.$e->getMessage()]; }
 }
 
