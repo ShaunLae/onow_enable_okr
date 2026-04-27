@@ -77,7 +77,7 @@ $csrf = getCsrfToken();
 <main class="main-content">
   <header class="top-header">
     <button class="btn btn-sm btn-outline-secondary d-md-none" onclick="document.getElementById('sidebar').classList.toggle('open')"><i class="bi bi-list"></i></button>
-    <div><div class="page-title">User Management</div><div class="page-breadcrumb">FR 5.1 · FR 5.2 — Admin only</div></div>
+    <div><div class="page-title">User Management</div><div class="page-breadcrumb">Manage system access, roles, and departmental assignments.</div></div>
     <div class="header-actions"><button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createModal"><i class="bi bi-person-plus me-1"></i>New User</button></div>
   </header>
   <div class="page-body">

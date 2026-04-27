@@ -39,13 +39,11 @@ body{background:var(--bg);min-height:100vh;display:flex;align-items:center}
         <div style="font-size:.7rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px">OKR Management</div>
       </div>
     </div>
-    <h1 style="font-size:1.4rem;font-weight:800;margin-bottom:.3rem">Welcome back</h1>
+    <h1 style="font-size:1.4rem;font-weight:800;margin-bottom:.3rem">Welcome</h1>
     <p class="text-muted small mb-4">Sign in to your account to continue.</p>
     <?php if($timeout): ?><div class="alert alert-warning py-2 small"><i class="bi bi-clock me-2"></i><?= $timeout ?></div><?php endif; ?>
     <?php if($error): ?><div class="alert alert-danger py-2 small"><i class="bi bi-exclamation-circle me-2"></i><?= sanitize($error) ?></div><?php endif; ?>
-    <!-- <div style="background:var(--primary-lt);border:1px solid rgba(37,99,235,.2);border-radius:10px;padding:.75rem 1rem;margin-bottom:1.25rem;font-size:.82rem;color:var(--primary)">
-      <i class="bi bi-info-circle me-1"></i><strong>Demo:</strong> admin@onow-enable.org / Admin@1234
-    </div> -->
+
     <form method="POST">
       <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
       <div class="mb-3">

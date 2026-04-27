@@ -1,4 +1,13 @@
 <?php
+// Auto-create and permission the uploads directory on first run
+$uploadsDir = __DIR__ . '/../uploads/';
+if (!is_dir($uploadsDir)) {
+    mkdir($uploadsDir, 0755, true);
+}
+if (!is_writable($uploadsDir)) {
+    chmod($uploadsDir, 0755);
+}
+
 // includes/config.php
 define('DB_HOST',        'localhost');
 define('DB_USER',        'root');
