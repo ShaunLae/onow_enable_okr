@@ -1,6 +1,6 @@
--- ONOW Enable — Migration v4
+-- ONOW Enable — Migration v2
 -- Adds created_by column to key_results table
--- Run in phpMyAdmin → select onow_enable → SQL tab
+-- Run in phpMyAdmin → select onow_enable_okr → SQL tab
 
 USE onow_enable;
 

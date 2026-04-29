@@ -1,9 +1,9 @@
 -- ============================================================
--- ONOW Enable OKR Management System — Database Schema v4
+-- ONOW Enable OKR Management System — Database Schema v1
 -- ============================================================
 -- Run this ONCE on a fresh database.
--- After import, visit: http://localhost/onow_v4/fix_passwords.php
--- then DELETE fix_passwords.php immediately.
+-- After import, visit: http://localhost/onow_enable/setup_passwords.php
+-- then DELETE setup_passwords.php immediately.
 -- ============================================================
 
 CREATE DATABASE IF NOT EXISTS onow_enable_okr CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -141,7 +141,7 @@ CREATE TABLE IF NOT EXISTS activity_log (
 
 SET FOREIGN_KEY_CHECKS = 1;
 
--- Seed users (placeholder hash — run fix_passwords.php after import)
+-- Seed users (placeholder hash — run setup_passwords.php after import)
 INSERT INTO users (full_name, email, password_hash, role, department, job_title, avatar_color) VALUES
 ('System Administrator',  'admin@onow-enable.org',          'PLACEHOLDER', 'Admin',   'IT',                   'System Admin',      '#1e40af'),
 ('Sarah Johnson',         'sarah.johnson@onow-enable.org',  'PLACEHOLDER', 'Manager', 'Programme Management', 'Programme Manager', '#059669'),
