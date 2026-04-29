@@ -14,7 +14,7 @@ define('DB_USER',        'root');
 define('DB_PASS',        '');
 define('DB_NAME',        'onow_enable_okr');
 define('DB_CHARSET',     'utf8mb4');
-define('SESSION_TIMEOUT', 1800);   // 30 minutes (FR 1.2)
+define('SESSION_TIMEOUT', 1800);   // 30 minutes 
 define('APP_NAME',       'ONOW Enable OKR');
 
 date_default_timezone_set('Europe/London');

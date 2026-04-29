@@ -136,7 +136,7 @@ $isAdmin = $user['role'] === 'Admin';
       <!-- Right: edit forms -->
       <div class="col-lg-8">
 
-        <!-- Edit Profile (FR 1.5) -->
+        <!-- Edit Profile -->
         <div class="card mb-3">
           <div class="card-header"><i class="bi bi-person-gear text-primary"></i><span class="card-title">Edit Profile</span></div>
           <div class="card-body">

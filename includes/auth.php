@@ -9,7 +9,7 @@ function startSecureSession(): void {
     }
 }
 
-/* FR 1.2 — session timeout */
+/* session timeout */
 function isLoggedIn(): bool {
     startSecureSession();
     if (empty($_SESSION['user_id']) || empty($_SESSION['last_activity'])) return false;
@@ -34,7 +34,7 @@ function getCurrentUser(): ?array {
     return $s->fetch() ?: null;
 }
 
-/* FR 1.1 */
+/* Login */
 function loginUser(string $email, string $password): array {
     $s = getDB()->prepare("SELECT * FROM users WHERE email=? AND is_active=1");
     $s->execute([trim($email)]);

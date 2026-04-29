@@ -578,11 +578,6 @@ $qLabel = $selectedQ ? "Filtered: $selectedQ" : 'All Periods';
   <?php /* ════════════ ADMIN ════════════ */ ?>
   <?php if ($role === 'Admin'): ?>
 
-    <!-- <div class="alert alert-info d-flex gap-2 mb-4" style="border-radius:12px">
-      <i class="bi bi-shield-check fs-5"></i>
-      <div><strong>Administrator View</strong> — Manage users and teams. OKR management is handled by Managers and Members.</div>
-    </div> -->
-
     <div class="row g-3 mb-4">
     <?php foreach ([
       ['Total Users',  $stats['total_users'],    'bi-people',      'var(--primary)', 'var(--primary-lt)', 'users.php'],

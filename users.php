@@ -141,7 +141,7 @@ $csrf = getCsrfToken();
 </main>
 </div>
 
-<!-- Create User Modal (FR 5.1) -->
+<!-- Create User Modal -->
 <div class="modal fade" id="createModal" tabindex="-1">
   <div class="modal-dialog"><div class="modal-content">
     <div class="modal-header"><h5 class="modal-title"><i class="bi bi-person-plus me-2"></i>Create New User</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>

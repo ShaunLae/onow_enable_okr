@@ -1,5 +1,5 @@
 <?php
-// includes/functions.php — OKR business logic v4
+// includes/functions.php — OKR business logic
 require_once __DIR__.'/config.php';
 require_once __DIR__.'/auth.php';
 
